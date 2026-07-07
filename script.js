@@ -109,3 +109,35 @@ document
     }
 
 });
+function getLocation(){
+
+navigator.geolocation.getCurrentPosition(async position=>{
+
+const lat=position.coords.latitude;
+const lon=position.coords.longitude;
+
+const response=await fetch(
+
+`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code`
+
+);
+
+const data=await response.json();
+
+document.getElementById("weather").innerHTML=`
+
+<h2>📍 Aktuális helyzet</h2>
+
+<h1>${data.current.temperature_2m}°C</h1>
+
+<p>${weatherCodes[data.current.weather_code]}</p>
+
+<p>💧 ${data.current.relative_humidity_2m}%</p>
+
+<p>💨 ${data.current.wind_speed_10m} km/h</p>
+
+`;
+
+});
+
+}
