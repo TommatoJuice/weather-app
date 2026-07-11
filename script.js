@@ -1,4 +1,3 @@
-
 const weatherCodes = {
     0: "☀️ Derült",
     1: "🌤 Többnyire derült",
@@ -6,127 +5,81 @@ const weatherCodes = {
     3: "☁️ Borult",
     45: "🌫 Köd",
     48: "🌫 Zúzmarás köd",
-    51: "🌦 Szitálás",
-    61: "🌧 Eső",
+    51: "🌦 Enyhe szitálás",
+    53: "🌦 Szitálás",
+    55: "🌧 Erős szitálás",
+    61: "🌦 Gyenge eső",
     63: "🌧 Eső",
-    65: "🌧 Heves eső",
-    71: "❄️ Hó",
+    65: "🌧 Erős eső",
+    71: "🌨 Gyenge hó",
+    73: "❄️ Havazás",
+    75: "❄️ Erős havazás",
     80: "🌦 Zápor",
+    81: "🌧 Erős zápor",
+    82: "⛈ Heves zápor",
     95: "⛈ Zivatar"
 };
 
-async function getWeather(city){
+async function getWeather(){
 
-    if(city.trim()==="") return;
+    const city = document.getElementById("city").value.trim();
 
-    const geoResponse = await fetch(
-        `https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1`
-    );
+    if(city===""){
+        alert("Adj meg egy várost!");
+        return;
+    }
 
-    const geoData = await geoResponse.json();
+    const geo = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1&language=hu&format=json`);
+    const geoData = await geo.json();
 
     if(!geoData.results){
-
-        document.getElementById("weather").innerHTML =
-        "<h2>Nincs ilyen város.</h2>";
-
+        document.getElementById("weather").innerHTML="Nincs találat.";
         return;
     }
 
     const place = geoData.results[0];
 
-    const weatherResponse = await fetch(
-
-`https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code&daily=temperature_2m_max,temperature_2m_min,time,sunrise,sunset&timezone=auto`
-
-    );
-
-    const data = await weatherResponse.json();
-
-    let html = `
-        <h2>${place.name}</h2>
-
-        <p>${place.country}</p>
-
-        <h1>${data.current.temperature_2m}°C</h1>
-
-        <p>${weatherCodes[data.current.weather_code] || "Ismeretlen időjárás"}</p>
-
-        <p>🤒 Hőérzet: ${data.current.apparent_temperature}°C</p>
-
-        <p>💧 Páratartalom: ${data.current.relative_humidity_2m}%</p>
-
-        <p>💨 Szél: ${data.current.wind_speed_10m} km/h</p>
-
-        <p>🌅 Napkelte: ${data.daily.sunrise[0].substring(11,16)}</p>
-
-        <p>🌇 Napnyugta: ${data.daily.sunset[0].substring(11,16)}</p>
-
-        <hr>
-
-        <h3>7 napos előrejelzés</h3>
-    `;
-
-    for(let i=0;i<data.daily.time.length;i++){
-
-        html += `
-            <p>
-                📅 ${data.daily.time[i]}<br>
-                ⬆️ ${data.daily.temperature_2m_max[i]}°C
-                &nbsp;
-                ⬇️ ${data.daily.temperature_2m_min[i]}°C
-            </p>
-        `;
-    }
-
-    document.getElementById("weather").innerHTML = html;
-
+    loadWeather(place.latitude, place.longitude, place.name);
 }
 
-document.getElementById("searchBtn").addEventListener("click",function(){
+async function loadWeather(lat,lon,name){
 
-    getWeather(document.getElementById("city").value);
+    const response = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code`
+    );
 
-});
+    const data = await response.json();
 
-document.getElementById("city").addEventListener("keydown",function(e){
-
-    if(e.key==="Enter"){
-
-        getWeather(document.getElementById("city").value);
-
-    }
-
-});
+    document.getElementById("weather").innerHTML=`
+        <h2>${name}</h2>
+        <h1>${data.current.temperature_2m} °C</h1>
+        <p>${weatherCodes[data.current.weather_code] || "Ismeretlen"}</p>
+        <p>💧 Páratartalom: ${data.current.relative_humidity_2m}%</p>
+        <p>💨 Szél: ${data.current.wind_speed_10m} km/h</p>
+    `;
+}
 
 function getLocation(){
 
-    navigator.geolocation.getCurrentPosition(async function(position){
+    navigator.geolocation.getCurrentPosition(async(position)=>{
 
         const lat = position.coords.latitude;
         const lon = position.coords.longitude;
 
-        const response = await fetch(
+        const geo = await fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}`);
+        const geoData = await geo.json();
 
-`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code`
+        let city="Jelenlegi hely";
 
-        );
+        if(geoData.results){
+            city=geoData.results[0].name;
+        }
 
-        const data = await response.json();
+        loadWeather(lat,lon,city);
 
-        document.getElementById("weather").innerHTML = `
-            <h2>📍 Aktuális helyzet</h2>
+    },()=>{
 
-            <h1>${data.current.temperature_2m}°C</h1>
-
-            <p>${weatherCodes[data.current.weather_code] || "Ismeretlen időjárás"}</p>
-
-            <p>🤒 Hőérzet: ${data.current.apparent_temperature}°C</p>
-
-            <p>💧 Páratartalom: ${data.current.relative_humidity_2m}%</p>
-
-            <p>💨 Szél: ${data.current.wind_speed_10m} km/h</p>
-        `;
+        alert("Nem sikerült lekérni a helyzeted.");
 
     });
 
